@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Shooting Game</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: black;
+            color: white;
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+        canvas {
+            display: block;
+        }
+        #score {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-size: 20px;
+            display: none;
+        }
+        .screen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 20px;
+            cursor: pointer;
+            border: none;
+            background: white;
+            color: black;
+            margin-top: 10px;
+            border-radius: 5px;
+        }
+        #game-over, #start-screen {
+            display: flex;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="score">Score: 0</div>
+    
+    <!-- Start Screen -->
+    <div id="start-screen" class="screen">
+        <h1>Shooting Game</h1>
+        <button onclick="startGame()">Start Game</button>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="game-over" class="screen" style="display: none;">
+        <h1>Game Over!</h1>
+        <button onclick="restartGame()">Restart</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const scoreDisplay = document.getElementById("score");
+        const startScreen = document.getElementById("start-screen");
+        const gameOverScreen = document.getElementById("game-over");
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        let score = 0;
+        let gameRunning = false;
+
+        class Player {
+            constructor() {
+                this.x = canvas.width / 2;
+                this.y = canvas.height - 50;
+                this.radius = 20;
+                this.color = "white";
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                ctx.closePath();
+            }
+        }
+
+        class Bullet {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.radius = 5;
+                this.color = "red";
+                this.speed = 7;
+            }
+            update() {
+                this.y -= this.speed;
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                ctx.closePath();
+            }
+        }
+
+        class Enemy {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = 0;
+                this.radius = 20;
+                this.color = "green";
+                this.speed = Math.random() * 2 + 1;
+            }
+            update() {
+                this.y += this.speed;
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                ctx.closePath();
+            }
+        }
+
+        const player = new Player();
+        const bullets = [];
+        const enemies = [];
+
+        function spawnEnemies() {
+            if (!gameRunning) return;
+            enemies.push(new Enemy());
+            setTimeout(spawnEnemies, 1000);
+        }
+
+        function checkCollision(bullet, enemy) {
+            const dist = Math.hypot(bullet.x - enemy.x, bullet.y - enemy.y);
+            return dist < bullet.radius + enemy.radius;
+        }
+
+        function checkGameOver() {
+            for (let enemy of enemies) {
+                if (enemy.y > canvas.height - 50) {
+                    gameRunning = false;
+                    gameOverScreen.style.display = "flex";
+                    scoreDisplay.style.display = "none";
+                }
+            }
+        }
+
+        function startGame() {
+            gameRunning = true;
+            score = 0;
+            bullets.length = 0;
+            enemies.length = 0;
+            scoreDisplay.innerText = "Score: 0";
+            scoreDisplay.style.display = "block";
+            startScreen.style.display = "none";
+            gameOverScreen.style.display = "none";
+            animate();
+            spawnEnemies();
+        }
+
+        function restartGame() {
+            startGame();
+        }
+
+        window.addEventListener("mousemove", (event) => {
+            if (gameRunning) {
+                player.x = event.clientX;
+            }
+        });
+
+        window.addEventListener("click", () => {
+            if (gameRunning) {
+                bullets.push(new Bullet(player.x, player.y));
+            }
+        });
+
+        function animate() {
+            if (!gameRunning) return;
+            requestAnimationFrame(animate);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            player.draw();
+            bullets.forEach((bullet, bulletIndex) => {
+                bullet.update();
+                bullet.draw();
+                if (bullet.y < 0) {
+                    bullets.splice(bulletIndex, 1);
+                }
+            });
+
+            enemies.forEach((enemy, enemyIndex) => {
+                enemy.update();
+                enemy.draw();
+
+                bullets.forEach((bullet, bulletIndex) => {
+                    if (checkCollision(bullet, enemy)) {
+                        bullets.splice(bulletIndex, 1);
+                        enemies.splice(enemyIndex, 1);
+                        score += 10;
+                        scoreDisplay.innerText = "Score: " + score;
+                    }
+                });
+            });
+
+            checkGameOver();
+        }
+    </script>
+</body>
+</html>
